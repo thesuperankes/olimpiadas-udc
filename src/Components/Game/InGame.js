@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef  } from 'react';
 import { Box, Button, Paper } from '@mui/material';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import Grid from '@mui/material/Unstable_Grid2';
@@ -12,17 +12,54 @@ def suma(a, b):
     );
 
     const [resultado, setResultado] = useState('C:');
+    const iFrameRef = useRef(null);
+
+
+
+    useEffect(() => {
+        const messageHandler = function (e) {
+          if (e.data && e.data.language) {
+            console.log(e.data);
+            // handle the e.data which contains the code object
+          }
+        };
+    
+        window.addEventListener('message', messageHandler);
+    
+        // Limpiar el oyente de eventos cuando el componente se desmonta
+        return () => {
+          window.removeEventListener('message', messageHandler);
+        };
+      }, []);
+
 
     const handleProbar = async () => {
         try {
-          const result = await validarCodigoPython(code);
-          setResultado(result.data.toString());
-          console.log(result);
+            const result = await validarCodigoPython(code);
+            setResultado(result.data.toString());
+            console.log(result);
         } catch (error) {
-          console.error('Error:', error);
+            console.error('Error:', error);
         }
-      };
-      
+    };
+
+    const sendCodeToFrame = () => {
+        const iFrame = iFrameRef.current;
+    
+        console.log("iFrame: ", iFrame);
+
+        if(iFrame) {
+          iFrame.contentWindow.postMessage({
+            eventType: 'populateCode',
+            language: 'python',
+            files: [{
+              "name": "HelloWorld.py",
+              "content": "print('Hola Mundo')"
+            }]
+          }, "*");
+        }
+      }
+
 
     return (
         <Box sx={{ flexGrow: 1 }} style={{ margin: '25px' }}>
@@ -32,7 +69,7 @@ def suma(a, b):
                         <h2>Construya un programa que cifre una contraseña usando MD5</h2>
                     </div>
                 </Grid>
-                <Grid item xs={8}>
+                <Grid item xs={12}>
                     <Paper
                         elevation={3}
                         style={{
@@ -42,26 +79,20 @@ def suma(a, b):
                             height: '70vh',
                         }}
                     >
-                        <CodeEditor
-                            value={code}
-                            language='python'
-                            placeholder='Please enter JS code.'
-                            onChange={(evn) => setCode(evn.target.value)}
-                            padding={30}
-                            style={{
-                                fontSize: 16,
-                                backgroundColor: '#f5f5f5',
-                                fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace',
-                                height: '100%',
-                            }}
-                        />
+                        <iframe
+                            frameBorder="0"
+                            ref={iFrameRef}
+                            height="550px"
+                            src="https://onecompiler.com/embed/python?codeChangeEvent=true&hideNewFileOption=true&disableCopyPaste=true&listenToEvents=true&theme=dark"
+                            width="100%"
+                        ></iframe>
 
                         <div className='row' style={{ marginTop: '20px' }}>
                             <div className='col-md-6'>
                                 <Button variant='contained' onClick={handleProbar} fullWidth>Probar</Button>
                             </div>
                             <div className='col-md-6'>
-                                <Button variant='contained' color="success" fullWidth>Enviar</Button>
+                                <Button variant='contained' onClick={sendCodeToFrame} color="success" fullWidth>Enviar</Button>
                             </div>
                         </div>
 
